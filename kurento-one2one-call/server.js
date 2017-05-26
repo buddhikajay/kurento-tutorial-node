@@ -163,49 +163,85 @@ CallMediaPipeline.prototype.createPipeline = function(callerId, calleeId, ws, ca
                         }));
                     });
 
-                    var recorderParams = {
+                    var calleeRecorderParams = {
                         mediaProfile: 'MP4',
-                        uri : "file:///home/buddhikajay/Downloads/recording_test"+new Date().toISOString()+".mp4"
+                        uri : "file:///home/buddhikajay/Downloads/recording_callee"+new Date().toISOString()+".mp4"
                     };
-                    pipeline.create('RecorderEndpoint', recorderParams, function(error, recorderEndpoint){
+                    pipeline.create('RecorderEndpoint', calleeRecorderParams, function(error, calleeRecorderEndpoint){
                         if(error){
-                            console.log("error when creating RecorderWebRTC Endpoint");
+                            console.log("error when creating Callee RecorderWebRTC Endpoint");
                             pipeline.release();
                             return callback(error);
                         }
-                        console.log("successfully created Recorder Endpoint");
+                        console.log("successfully created callee Recorder Endpoint");
 
-                        calleeWebRtcEndpoint.connect(recorderEndpoint, function (error) {
+                        calleeWebRtcEndpoint.connect(calleeRecorderEndpoint, function (error) {
                            if(error){
+                               console.log("error when connectting Callee Recorder endpoint to WebRTC Endpoint");
                                pipeline.release();
                                return callback(error);
                            }
 
-                            callerWebRtcEndpoint.connect(calleeWebRtcEndpoint, function(error) {
-                                if (error) {
-                                    pipeline.release();
-                                    return callback(error);
-                                }
+                                var callerRecorderParams = {
+                                    mediaProfile: 'MP4',
+                                    uri : "file:///home/buddhikajay/Downloads/recording_caller"+new Date().toISOString()+".mp4"
+                                };
 
-                                calleeWebRtcEndpoint.connect(callerWebRtcEndpoint, function(error) {
-                                    if (error) {
+                                pipeline.create('RecorderEndpoint', callerRecorderParams, function(error, callerRecorderEndpoint){
+                                    if(error){
+                                        console.log("error when creating Caller RecorderWebRTC Endpoint");
                                         pipeline.release();
                                         return callback(error);
                                     }
-                                    recorderEndpoint.record(function (error) {
+
+                                    console.log("successfully created callee Recorder Endpoint");
+
+                                    callerWebRtcEndpoint.connect(callerRecorderEndpoint, function (error){
                                         if(error){
-                                            console.log("error in recording");
+                                            console.log("error when connecting Caller Recorder endpoint to WebRTC Endpoint");
                                             pipeline.release();
                                             return callback(error);
                                         }
-                                    })
+                                    });
+
+                                    callerWebRtcEndpoint.connect(calleeWebRtcEndpoint, function(error) {
+                                        if (error) {
+                                            pipeline.release();
+                                            return callback(error);
+                                        }
+
+                                        calleeWebRtcEndpoint.connect(callerWebRtcEndpoint, function(error) {
+                                            if (error) {
+                                                pipeline.release();
+                                                return callback(error);
+                                            }
+                                            calleeRecorderEndpoint.record(function (error) {
+                                                if(error){
+                                                    console.log("error in callee recording");
+                                                    pipeline.release();
+                                                    return callback(error);
+                                                }
+                                                console.log("started callee recording");
+                                                callerRecorderEndpoint.record(function (error) {
+                                                    if(error){
+                                                        console.log("error in caller recording");
+                                                        pipeline.release();
+                                                        return callback(error);
+                                                    }
+                                                    console.log("started caller recording");
+                                                })
+                                            })
+                                        });
+
+                                        self.pipeline = pipeline;
+                                        self.webRtcEndpoint[callerId] = callerWebRtcEndpoint;
+                                        self.webRtcEndpoint[calleeId] = calleeWebRtcEndpoint;
+                                        callback(null);
+                                    });
+
+
                                 });
 
-                                self.pipeline = pipeline;
-                                self.webRtcEndpoint[callerId] = callerWebRtcEndpoint;
-                                self.webRtcEndpoint[calleeId] = calleeWebRtcEndpoint;
-                                callback(null);
-                            });
 
                         });
                     });
