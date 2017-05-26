@@ -163,24 +163,55 @@ CallMediaPipeline.prototype.createPipeline = function(callerId, calleeId, ws, ca
                         }));
                     });
 
-                    callerWebRtcEndpoint.connect(calleeWebRtcEndpoint, function(error) {
-                        if (error) {
+                    var recorderParams = {
+                        mediaProfile: 'MP4',
+                        uri : "file:///home/buddhikajay/Downloads/recording_test"+new Date().toISOString()+".mp4"
+                    };
+                    pipeline.create('RecorderEndpoint', recorderParams, function(error, recorderEndpoint){
+                        if(error){
+                            console.log("error when creating RecorderWebRTC Endpoint");
                             pipeline.release();
                             return callback(error);
                         }
+                        console.log("successfully created Recorder Endpoint");
 
-                        calleeWebRtcEndpoint.connect(callerWebRtcEndpoint, function(error) {
-                            if (error) {
-                                pipeline.release();
-                                return callback(error);
-                            }
+                        calleeWebRtcEndpoint.connect(recorderEndpoint, function (error) {
+                           if(error){
+                               pipeline.release();
+                               return callback(error);
+                           }
+
+                            callerWebRtcEndpoint.connect(calleeWebRtcEndpoint, function(error) {
+                                if (error) {
+                                    pipeline.release();
+                                    return callback(error);
+                                }
+
+                                calleeWebRtcEndpoint.connect(callerWebRtcEndpoint, function(error) {
+                                    if (error) {
+                                        pipeline.release();
+                                        return callback(error);
+                                    }
+                                    recorderEndpoint.record(function (error) {
+                                        if(error){
+                                            console.log("error in recording");
+                                            pipeline.release();
+                                            return callback(error);
+                                        }
+                                    })
+                                });
+
+                                self.pipeline = pipeline;
+                                self.webRtcEndpoint[callerId] = callerWebRtcEndpoint;
+                                self.webRtcEndpoint[calleeId] = calleeWebRtcEndpoint;
+                                callback(null);
+                            });
+
                         });
-
-                        self.pipeline = pipeline;
-                        self.webRtcEndpoint[callerId] = callerWebRtcEndpoint;
-                        self.webRtcEndpoint[calleeId] = calleeWebRtcEndpoint;
-                        callback(null);
                     });
+
+
+/**/
                 });
             });
         });
