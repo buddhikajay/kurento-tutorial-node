@@ -165,7 +165,7 @@ CallMediaPipeline.prototype.createPipeline = function(callerId, calleeId, ws, ca
 
                     var calleeRecorderParams = {
                         mediaProfile: 'MP4',
-                        uri : "file:///home/buddhikajay/Downloads/recording_callee"+new Date().toISOString()+".mp4"
+                        uri : "file:///tmp/recording_callee"+new Date().toISOString()+".mp4"
                     };
                     pipeline.create('RecorderEndpoint', calleeRecorderParams, function(error, calleeRecorderEndpoint){
                         if(error){
@@ -184,7 +184,7 @@ CallMediaPipeline.prototype.createPipeline = function(callerId, calleeId, ws, ca
 
                                 var callerRecorderParams = {
                                     mediaProfile: 'MP4',
-                                    uri : "file:///home/buddhikajay/Downloads/recording_caller"+new Date().toISOString()+".mp4"
+                                    uri : "file:///tmp/recording_caller"+new Date().toISOString()+".mp4"
                                 };
 
                                 pipeline.create('RecorderEndpoint', callerRecorderParams, function(error, callerRecorderEndpoint){
