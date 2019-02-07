@@ -51,10 +51,20 @@ ws.onmessage = function(message) {
 		break;
 	case 'presenterList':
 		console.log(message.data);
+		addPresenter(parsedMessage.presenters);
 		break;
 	default:
 		console.error('Unrecognized message', parsedMessage);
 	}
+};
+
+function addPresenter(presenters){
+	presenters.forEach(function (presenter) {
+    $('#presenterId').append($('<option>', {
+      value: presenter,
+      text: presenter
+    }));
+  });
 }
 
 function presenterResponse(message) {
@@ -126,9 +136,10 @@ function onOfferViewer(error, offerSdp) {
 
 	var message = {
 		id : 'viewer',
-		presenterId: document.getElementById('presenterId').value,
+		presenterId: $('#presenterId').find(":selected").val(),
 		sdpOffer : offerSdp
-	}
+	};
+	console.log(message);
 	sendMessage(message);
 }
 
