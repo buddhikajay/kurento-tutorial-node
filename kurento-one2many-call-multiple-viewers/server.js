@@ -27,7 +27,7 @@ var https = require('https');
 var argv = minimist(process.argv.slice(2), {
     default: {
         as_uri: 'https://localhost:8443/',
-        ws_uri: 'ws://localhost:8888/kurento'
+        ws_uri: 'ws://35.165.143.120:8888/kurento'
     }
 });
 
@@ -48,6 +48,7 @@ var kurentoClient = null;
 var presenters = [];
 var viewers = [];
 var noPresenterMessage = 'No active presenter. Try again later...';
+var noPipelineMessage = 'Could not fine the media pipeline for the presenter';
 
 /*
  * Server startup
@@ -174,17 +175,12 @@ function getKurentoClient(callback) {
 function startPresenter(sessionId, ws, sdpOffer, callback) {
 	clearCandidatesQueue(sessionId);
 
-	if (presenters[sessionId]) {
-		stop(sessionId);
-		return callback("Another user is currently acting as presenter. Try again later ...");
-	}
-
   presenters[sessionId] = {
 		id : sessionId,
 		pipeline : null,
 		webRtcEndpoint : null,
 		viewers: []
-	}
+	};
 
 	getKurentoClient(function(error, kurentoClient) {
 		if (error) {
@@ -265,23 +261,29 @@ function startPresenter(sessionId, ws, sdpOffer, callback) {
 function startViewer(sessionId, ws, sdpOffer, presenterId, callback) {
 	clearCandidatesQueue(sessionId);
 
-	if (!presenters[presenterId]) {
+	if (!presenters[presenterId] || presenters[presenterId] === null) {
 		stop(sessionId);
-		return callback(noPresenterMessage);
+		return callback(noPresenterMessage + ':' + presenterId);
 	}
+
+  if (!presenters[presenterId].pipeline || presenters[presenterId].pipeline === null) {
+    stop(sessionId);
+    return callback(noPipelineMessage + ':' + presenterId);
+  }
 
   presenters[presenterId].pipeline.create('WebRtcEndpoint', function(error, webRtcEndpoint) {
 		if (error) {
 			stop(sessionId);
+			console.log('error creating viewer webRTC endpoint');
 			return callback(error);
 		}
 		viewers[sessionId] = {
 			"webRtcEndpoint" : webRtcEndpoint,
 			"ws" : ws
-		}
+		};
 
 
-		if (presenters[presenterId] === null) {
+		if (!presenters[presenterId] || presenters[presenterId] === null) {
 			stop(sessionId);
 			return callback(noPresenterMessage);
 		}
