@@ -94,7 +94,7 @@ wss.on('connection', function(ws) {
 
     ws.on('message', function(_message) {
         var message = JSON.parse(_message);
-        console.log('Connection ' + sessionId + ' received message ', message);
+        // console.log('Connection ' + sessionId + ' received message ', message);
 
         switch (message.id) {
         case 'presenter':
@@ -156,6 +156,7 @@ wss.on('connection', function(ws) {
 
 // Recover kurentoClient for the first time.
 function getKurentoClient(callback) {
+		console.log('connecting to kurento');
     if (kurentoClient !== null) {
         return callback(null, kurentoClient);
     }
@@ -173,6 +174,11 @@ function getKurentoClient(callback) {
 }
 
 function startPresenter(sessionId, ws, sdpOffer, callback) {
+	console.log('Starting Presenter :' + sessionId);
+	if(presenters[sessionId]){
+    console.log('Presenter :' + sessionId +' exists');
+    return callback('Presenter Exist');
+	}
 	clearCandidatesQueue(sessionId);
 
   presenters[sessionId] = {
@@ -182,12 +188,16 @@ function startPresenter(sessionId, ws, sdpOffer, callback) {
 		viewers: []
 	};
 
+  console.log('ready to connect with kurento');
+
 	getKurentoClient(function(error, kurentoClient) {
 		if (error) {
 			stop(sessionId);
+      console.log('Error , Kurento client failed');
 			return callback(error);
 		}
 
+    console.log('Kurento client is ready');
 		if (presenters[sessionId] === null) {
 			stop(sessionId);
 			return callback(noPresenterMessage);
@@ -196,16 +206,19 @@ function startPresenter(sessionId, ws, sdpOffer, callback) {
 		kurentoClient.create('MediaPipeline', function(error, pipeline) {
 			if (error) {
 				stop(sessionId);
+				console.log('Could not create media pipeline');
 				return callback(error);
 			}
-
+      console.log('Media pipeline created');
 			if (presenters[sessionId] === null) {
 				stop(sessionId);
 				return callback(noPresenterMessage);
 			}
 
       presenters[sessionId].pipeline = pipeline;
-			pipeline.create('WebRtcEndpoint', function(error, webRtcEndpoint) {
+      console.log('--------------------------');
+			console.log(presenters);
+      presenters[sessionId].pipeline.create('WebRtcEndpoint', function(error, webRtcEndpoint) {
 				if (error) {
 					stop(sessionId);
 					return callback(error);
@@ -260,6 +273,7 @@ function startPresenter(sessionId, ws, sdpOffer, callback) {
 
 function startViewer(sessionId, ws, sdpOffer, presenterId, callback) {
 	clearCandidatesQueue(sessionId);
+	console.log(presenters);
 
 	if (!presenters[presenterId] || presenters[presenterId] === null) {
 		stop(sessionId);
@@ -342,7 +356,7 @@ function clearCandidatesQueue(sessionId) {
 }
 
 function stop(sessionId) {
-	if (presenters[sessionId] && presenters[sessionId].id == sessionId) {
+	if (presenters[sessionId] && presenters[sessionId].id === sessionId) {
 		for (var i in presenters[sessionId].viewers) {
 			var viewer = presenters[sessionId].viewers[i];
 			if (viewer.ws) {
