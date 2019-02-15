@@ -23,6 +23,7 @@ var ws = require('ws');
 var kurento = require('kurento-client');
 var fs    = require('fs');
 var https = require('https');
+kurento.register('kurento-module-meetrixkurentohelloworld');
 
 var argv = minimist(process.argv.slice(2), {
     default: {
@@ -229,45 +230,59 @@ function startPresenter(sessionId, ws, sdpOffer, callback) {
 					return callback(noPresenterMessage);
 				}
 
-        presenters[sessionId].webRtcEndpoint = webRtcEndpoint;
+        var options = {};
+        presenters[sessionId].pipeline.create('meetrixkurentohelloworld.MeetrixKurentoHelloWorld', options, function(error, filter) {
+          if (error) {
+            return callback(error);
+          }
 
-                if (candidatesQueue[sessionId]) {
-                    while(candidatesQueue[sessionId].length) {
-                        var candidate = candidatesQueue[sessionId].shift();
-                        webRtcEndpoint.addIceCandidate(candidate);
-                    }
-                }
+          webRtcEndpoint.connect(filter, function(error) {
+            if (error) {
+              return callback(error);
+            }
+            presenters[sessionId].webRtcEndpoint = filter;
 
-                webRtcEndpoint.on('OnIceCandidate', function(event) {
-                    var candidate = kurento.getComplexType('IceCandidate')(event.candidate);
-                    ws.send(JSON.stringify({
-                        id : 'iceCandidate',
-                        candidate : candidate
-                    }));
-                });
+            if (candidatesQueue[sessionId]) {
+              while(candidatesQueue[sessionId].length) {
+                var candidate = candidatesQueue[sessionId].shift();
+                webRtcEndpoint.addIceCandidate(candidate);
+              }
+            }
 
-				webRtcEndpoint.processOffer(sdpOffer, function(error, sdpAnswer) {
-					if (error) {
-						stop(sessionId);
-						return callback(error);
-					}
-
-					if (presenters[sessionId] === null) {
-						stop(sessionId);
-						return callback(noPresenterMessage);
-					}
-
-					callback(null, sdpAnswer);
-				});
-
-                webRtcEndpoint.gatherCandidates(function(error) {
-                    if (error) {
-                        stop(sessionId);
-                        return callback(error);
-                    }
-                });
+            webRtcEndpoint.on('OnIceCandidate', function(event) {
+              var candidate = kurento.getComplexType('IceCandidate')(event.candidate);
+              ws.send(JSON.stringify({
+                id : 'iceCandidate',
+                candidate : candidate
+              }));
             });
+
+            webRtcEndpoint.processOffer(sdpOffer, function(error, sdpAnswer) {
+              if (error) {
+                stop(sessionId);
+                return callback(error);
+              }
+
+              if (presenters[sessionId] === null) {
+                stop(sessionId);
+                return callback(noPresenterMessage);
+              }
+
+              callback(null, sdpAnswer);
+            });
+
+            webRtcEndpoint.gatherCandidates(function(error) {
+              if (error) {
+                stop(sessionId);
+                return callback(error);
+              }
+            });
+          });
+
         });
+
+			});
+		});
 	});
 }
 
