@@ -186,6 +186,7 @@ function startPresenter(sessionId, ws, sdpOffer, callback) {
 		id : sessionId,
 		pipeline : null,
 		webRtcEndpoint : null,
+		filter: null,
 		viewers: []
 	};
 
@@ -230,6 +231,8 @@ function startPresenter(sessionId, ws, sdpOffer, callback) {
 					return callback(noPresenterMessage);
 				}
 
+        presenters[sessionId].webRtcEndpoint = webRtcEndpoint;
+
         var options = {};
         presenters[sessionId].pipeline.create('meetrixkurentohelloworld.MeetrixKurentoHelloWorld', options, function(error, filter) {
           if (error) {
@@ -240,7 +243,8 @@ function startPresenter(sessionId, ws, sdpOffer, callback) {
             if (error) {
               return callback(error);
             }
-            presenters[sessionId].webRtcEndpoint = filter;
+            presenters[sessionId].filter = filter;
+
 
             if (candidatesQueue[sessionId]) {
               while(candidatesQueue[sessionId].length) {
@@ -342,7 +346,7 @@ function startViewer(sessionId, ws, sdpOffer, presenterId, callback) {
 				return callback(noPresenterMessage);
 			}
 
-      presenters[presenterId].webRtcEndpoint.connect(webRtcEndpoint, function(error) {
+      presenters[presenterId].filter.connect(webRtcEndpoint, function(error) {
 				if (error) {
 					stop(sessionId);
 					return callback(error);
